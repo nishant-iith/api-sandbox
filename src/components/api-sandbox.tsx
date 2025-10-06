@@ -17,6 +17,8 @@ import Link from 'next/link';
 import { Input } from './ui/input';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { ThemeToggle } from './theme-toggle';
+import { ExportDialog } from './export-dialog';
+import { ImportDialog } from './import-dialog';
 
 export function ApiSandbox() {
   const [activeRequest, setActiveRequest] = useState<ApiRequest | null>(null);
@@ -119,6 +121,26 @@ export function ApiSandbox() {
         title: "Request Saved",
         description: `"${activeRequest.name}" has been updated.`,
       });
+    }
+  };
+
+  /**
+   * Handles importing data from file
+   * @param data - Imported data containing collections, environments, and/or history
+   */
+  const handleImportData = (data: {
+    collections?: CollectionItem[];
+    environments?: Environment[];
+    history?: RequestHistoryItem[];
+  }) => {
+    if (data.collections) {
+      setCollections(data.collections);
+    }
+    if (data.environments) {
+      setEnvironments(data.environments);
+    }
+    if (data.history) {
+      setHistory(data.history);
     }
   };
 
@@ -330,6 +352,17 @@ export function ApiSandbox() {
                   <Save className={isLargeDesktop ? "mr-2 h-4 w-4" : "h-4 w-4"} />
                   {isLargeDesktop && 'Save'}
                 </Button>
+                <ExportDialog
+                  collections={collections}
+                  environments={environments}
+                  history={history}
+                />
+                <ImportDialog
+                  collections={collections}
+                  environments={environments}
+                  history={history}
+                  onImport={handleImportData}
+                />
                  <Link href="/learn">
                     <Button variant={isLargeDesktop ? "outline" : "icon"} size="sm" title="Learn APIs">
                         <GraduationCap className={isLargeDesktop ? "mr-2 h-4 w-4" : "h-4 w-4"} />
