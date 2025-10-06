@@ -17,6 +17,8 @@ interface ExportDialogProps {
   collections: CollectionItem[];
   environments: Environment[];
   history: RequestHistoryItem[];
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -24,10 +26,22 @@ interface ExportDialogProps {
  * @param collections - Current collections
  * @param environments - Current environments
  * @param history - Request history
+ * @param externalOpen - External control for dialog open state
+ * @param onExternalOpenChange - Callback for external state changes
  */
-export function ExportDialog({ collections, environments, history }: ExportDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ExportDialog({
+  collections,
+  environments,
+  history,
+  externalOpen,
+  onExternalOpenChange
+}: ExportDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const { toast } = useToast();
+
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setIsOpen = onExternalOpenChange || setInternalOpen;
 
   /**
    * Handles export action with success notification

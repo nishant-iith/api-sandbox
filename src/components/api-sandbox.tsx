@@ -22,6 +22,8 @@ import { ImportDialog } from './import-dialog';
 import { STORAGE_KEYS, DEFAULTS } from '@/lib/constants';
 import { generateId } from '@/utils/id-generator';
 import { duplicateRequest, generateCurlCommand, copyToClipboard } from '@/utils/request-utils';
+import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
+import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 
 export function ApiSandbox() {
   const [activeRequest, setActiveRequest] = useState<ApiRequest | null>(null);
@@ -35,6 +37,9 @@ export function ApiSandbox() {
   const [activeEnvironmentId, setActiveEnvironmentId] = useLocalStorage<string | null>(STORAGE_KEYS.ACTIVE_ENVIRONMENT, null);
 
   const [showCorsWarning, setShowCorsWarning] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const isLargeDesktop = useMediaQuery("(min-width: 1024px)");
@@ -184,6 +189,47 @@ export function ApiSandbox() {
       });
     }
   };
+
+  // Keyboard shortcuts configuration
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: 'Enter',
+      ctrlOrCmd: true,
+      description: 'Send request',
+      action: () => {
+        if (activeRequest && !loading) {
+          handleSendRequest();
+        }
+      }
+    },
+    {
+      key: 's',
+      ctrlOrCmd: true,
+      description: 'Save request',
+      action: handleSaveRequest
+    },
+    {
+      key: 'd',
+      ctrlOrCmd: true,
+      description: 'Duplicate request',
+      action: handleDuplicateRequest
+    },
+    {
+      key: 'e',
+      ctrlOrCmd: true,
+      description: 'Export data',
+      action: () => setExportDialogOpen(true)
+    },
+    {
+      key: '/',
+      ctrlOrCmd: true,
+      description: 'Show keyboard shortcuts',
+      action: () => setShowShortcutsDialog(true)
+    }
+  ];
+
+  // Register keyboard shortcuts
+  useKeyboardShortcuts({ shortcuts, enabled: true });
 
   const validateUrl = (url: string): boolean => {
     if (!url) return false;
@@ -406,6 +452,8 @@ export function ApiSandbox() {
                   collections={collections}
                   environments={environments}
                   history={history}
+                  externalOpen={exportDialogOpen}
+                  onExternalOpenChange={setExportDialogOpen}
                 />
                 <ImportDialog
                   collections={collections}
@@ -454,6 +502,13 @@ export function ApiSandbox() {
             </main>
           </div>
       </div>
+
+      {/* Dialogs */}
+      <KeyboardShortcutsDialog
+        open={showShortcutsDialog}
+        onOpenChange={setShowShortcutsDialog}
+        shortcuts={shortcuts}
+      />
     </SidebarProvider>
   );
 }
