@@ -8,22 +8,13 @@ import { RequestPanel } from '@/components/request-panel';
 import { ResponsePanel } from '@/components/response-panel';
 import { ApiRequest, ApiResponse, CollectionItem, RequestHistoryItem, HttpMethod, KeyValuePair, Environment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import dynamic from 'next/dynamic';
-
-const CodeSnippetViewer = dynamic(() => import('@/components/code-snippet-viewer').then(mod => ({ default: mod.CodeSnippetViewer })), {
-  loading: () => <div className="animate-pulse bg-muted h-40 rounded" />
-});
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Code, Terminal, AlertTriangle, X, Save, GraduationCap, List, Globe } from 'lucide-react';
+import { Terminal, AlertTriangle, X, Save, GraduationCap, List, Globe } from 'lucide-react';
 import { SidebarContent as SandboxSidebarContent } from '@/components/sidebar-content';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Input } from './ui/input';
-const EnvironmentEditor = dynamic(() => import('./environment-editor').then(mod => ({ default: mod.EnvironmentEditor })), {
-  loading: () => <div className="animate-pulse bg-muted h-20 rounded" />
-});
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { ThemeToggle } from './theme-toggle';
 
@@ -38,11 +29,6 @@ export function ApiSandbox() {
   const [environments, setEnvironments] = useLocalStorage<Environment[]>('api-sandbox-environments', []);
   const [activeEnvironmentId, setActiveEnvironmentId] = useLocalStorage<string | null>('api-sandbox-active-env', null);
 
-
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [codeLanguage, setCodeLanguage] = useState('cURL');
-  const [isCodeGenOpen, setIsCodeGenOpen] = useState(false);
-  const [isCodeGenLoading, setIsCodeGenLoading] = useState(false);
   const [showCorsWarning, setShowCorsWarning] = useState(false);
   
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -282,41 +268,6 @@ export function ApiSandbox() {
       setLoading(false);
     }
   };
-  
-  const handleGenerateCode = async (lang: string) => {
-    if (!activeRequest) return;
-    setIsCodeGenLoading(true);
-    setGeneratedCode(`Generating snippet for ${lang}...`);
-    try {
-      const { generateCodeSnippet } = await import('@/ai/flows/generate-code-snippets');
-      const result = await generateCodeSnippet({
-        method: activeRequest.method,
-        url: substituteVariables(activeRequest.url),
-        headers: JSON.stringify(Object.fromEntries(activeRequest.headers.filter(h => h.enabled && h.key).map(h => [substituteVariables(h.key), substituteVariables(h.value)]))),
-        body: substituteVariables(activeRequest.body),
-        codeLanguage: lang.split(' ')[0],
-        library: lang.split(' ')[1]?.replace(/[()]/g, ''),
-      });
-      setGeneratedCode(result.codeSnippet);
-    } catch (error) {
-      console.error(error);
-      setGeneratedCode('Failed to generate code snippet.');
-      toast({
-        variant: 'destructive',
-        title: 'AI Error',
-        description: 'Could not generate code snippet.',
-      });
-    } finally {
-      setIsCodeGenLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isCodeGenOpen && activeRequest) {
-      handleGenerateCode(codeLanguage);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCodeGenOpen, codeLanguage]);
 
   if (!activeRequest) {
     return (
@@ -391,31 +342,6 @@ export function ApiSandbox() {
                         {isLargeDesktop && 'Free APIs'}
                     </Button>
                 </a>
-                <Dialog open={isCodeGenOpen} onOpenChange={setIsCodeGenOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant={isLargeDesktop ? "outline" : "icon"} size="sm" title="Generate Code">
-                      <Code className={isLargeDesktop ? "mr-2 h-4 w-4" : "h-4 w-4"} />
-                      {isLargeDesktop && 'Code'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Generate Code Snippet</DialogTitle>
-                    </DialogHeader>
-                    <Select value={codeLanguage} onValueChange={setCodeLanguage}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cURL">cURL</SelectItem>
-                        <SelectItem value="JavaScript (fetch)">JavaScript (fetch)</SelectItem>
-                        <SelectItem value="JavaScript (axios)">JavaScript (axios)</SelectItem>
-                        <SelectItem value="Python (requests)">Python (requests)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <CodeSnippetViewer code={generatedCode} language={codeLanguage.toLowerCase().split(' ')[0]} isLoading={isCodeGenLoading} />
-                  </DialogContent>
-                </Dialog>
                 <ThemeToggle />
               </div>
             </header>
