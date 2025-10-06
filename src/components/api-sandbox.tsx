@@ -24,6 +24,7 @@ import { generateId } from '@/utils/id-generator';
 import { duplicateRequest, generateCurlCommand, copyToClipboard } from '@/utils/request-utils';
 import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
+import { applyAuthentication } from '@/utils/auth-utils';
 
 export function ApiSandbox() {
   const [activeRequest, setActiveRequest] = useState<ApiRequest | null>(null);
@@ -281,10 +282,14 @@ export function ApiSandbox() {
 
     try {
       const url = new URL(cleanedUrl);
+
+      // Build query params
+      const queryParams = new URLSearchParams();
       activeRequest.queryParams
         .filter(p => p.enabled && p.key)
-        .forEach(p => url.searchParams.append(substituteVariables(p.key), substituteVariables(p.value)));
+        .forEach(p => queryParams.append(substituteVariables(p.key), substituteVariables(p.value)));
 
+      // Build headers
       const headers = new Headers();
       activeRequest.headers
         .filter(h => h.enabled && h.key)
@@ -294,12 +299,25 @@ export function ApiSandbox() {
           if (key) headers.append(key, value);
         });
 
+      // Apply authentication
+      const { headers: authHeaders, queryParams: authQueryParams } = applyAuthentication(
+        activeRequest.auth,
+        headers,
+        queryParams,
+        substituteVariables
+      );
+
+      // Merge auth query params into URL
+      authQueryParams.forEach((value, key) => {
+        url.searchParams.append(key, value);
+      });
+
       let body: BodyInit | undefined = undefined;
       if (activeRequest.method !== 'GET' && activeRequest.method !== 'HEAD') {
          if (activeRequest.bodyType === 'json' && activeRequest.body) {
           body = substituteVariables(activeRequest.body);
-          if (!headers.has('Content-Type')) {
-            headers.append('Content-Type', 'application/json');
+          if (!authHeaders.has('Content-Type')) {
+            authHeaders.append('Content-Type', 'application/json');
           }
         } else if (activeRequest.bodyType === 'form-urlencoded' && activeRequest.body) {
           const substitutedBody = substituteVariables(activeRequest.body);
@@ -309,15 +327,15 @@ export function ApiSandbox() {
               urlSearchParams.append(key, bodyParams[key]);
           }
           body = urlSearchParams;
-          if (!headers.has('Content-Type')) {
-            headers.append('Content-Type', 'application/x-www-form-urlencoded');
+          if (!authHeaders.has('Content-Type')) {
+            authHeaders.append('Content-Type', 'application/x-www-form-urlencoded');
           }
         }
       }
 
       const res = await fetch(url.toString(), {
         method: activeRequest.method,
-        headers,
+        headers: authHeaders,
         body,
         mode: 'cors',
       });

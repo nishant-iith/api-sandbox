@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { METHOD_COLORS } from '@/lib/constants';
 import { UrlInput } from './url-input';
 import { JsonEditor } from './json-editor';
+import { AuthEditor } from './auth-editor';
 
 interface RequestPanelProps {
   request: ApiRequest;
@@ -123,9 +124,10 @@ export const RequestPanel = React.memo(function RequestPanel({
           )}
 
           <Tabs defaultValue="params" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="params">Query Params</TabsTrigger>
               <TabsTrigger value="headers">Headers</TabsTrigger>
+              <TabsTrigger value="auth">Auth</TabsTrigger>
               <TabsTrigger value="body" disabled={isBodyDisabled}>Body</TabsTrigger>
             </TabsList>
             <TabsContent value="params" className="mt-4">
@@ -138,6 +140,12 @@ export const RequestPanel = React.memo(function RequestPanel({
               <KeyValueEditor
                 value={request.headers}
                 onChange={v => onUpdateRequest({ headers: v })}
+              />
+            </TabsContent>
+            <TabsContent value="auth" className="mt-4">
+              <AuthEditor
+                value={request.auth || { type: 'none' }}
+                onChange={(auth) => onUpdateRequest({ auth })}
               />
             </TabsContent>
             <TabsContent value="body" className="mt-4">

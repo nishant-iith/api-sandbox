@@ -3,9 +3,33 @@ export interface KeyValuePair {
   key: string;
   value: string;
   enabled: boolean;
+  secret?: boolean; // For masking sensitive values in environment variables
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+
+/**
+ * Authentication configuration for API requests
+ */
+export interface AuthConfig {
+  type: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2';
+  bearer?: {
+    token: string;
+  };
+  basic?: {
+    username: string;
+    password: string;
+  };
+  apiKey?: {
+    key: string;
+    value: string;
+    addTo: 'header' | 'query';
+  };
+  oauth2?: {
+    // Placeholder for future OAuth2 implementation
+    accessToken?: string;
+  };
+}
 
 export interface ApiRequest {
   id: string;
@@ -16,6 +40,7 @@ export interface ApiRequest {
   headers: KeyValuePair[];
   body: string;
   bodyType: 'none' | 'json' | 'form-urlencoded';
+  auth?: AuthConfig;
 }
 
 export interface ApiResponse {
