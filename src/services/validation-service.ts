@@ -47,6 +47,107 @@ export const validateUrl = (url: string): boolean => {
 };
 
 /**
+ * URL validation result with detailed feedback
+ */
+export interface UrlValidationResult {
+  isValid: boolean;
+  state: 'valid' | 'invalid' | 'warning' | 'empty';
+  message?: string;
+  suggestion?: string;
+}
+
+/**
+ * Advanced URL validation with visual feedback and suggestions
+ * @param url - The URL string to validate
+ * @returns Detailed validation result with state and suggestions
+ */
+export const validateUrlAdvanced = (url: string): UrlValidationResult => {
+  // Empty state
+  if (!url || !url.trim()) {
+    return {
+      isValid: false,
+      state: 'empty',
+      message: 'URL is required'
+    };
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Check for common mistakes - missing protocol
+  if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+    // Check if it looks like a valid domain
+    if (/^[a-zA-Z0-9][a-zA-Z0-9-.]+(:\d+)?(\/.*)?$/.test(trimmedUrl)) {
+      return {
+        isValid: false,
+        state: 'invalid',
+        message: 'Missing protocol',
+        suggestion: `https://${trimmedUrl}`
+      };
+    }
+  }
+
+  // Check for localhost variations
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(trimmedUrl)) {
+    return {
+      isValid: false,
+      state: 'invalid',
+      message: 'Missing protocol',
+      suggestion: `http://${trimmedUrl}`
+    };
+  }
+
+  // Try to parse URL
+  try {
+    const urlObject = new URL(trimmedUrl);
+
+    // Only allow http and https protocols
+    if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
+      return {
+        isValid: false,
+        state: 'invalid',
+        message: `Protocol '${urlObject.protocol}' is not supported. Use http:// or https://`
+      };
+    }
+
+    // Check for suspicious patterns
+    if (containsXSSPatterns(trimmedUrl)) {
+      return {
+        isValid: false,
+        state: 'invalid',
+        message: 'URL contains suspicious patterns'
+      };
+    }
+
+    // Valid URL - check if it's localhost
+    if (urlObject.hostname === 'localhost' || urlObject.hostname === '127.0.0.1') {
+      return {
+        isValid: true,
+        state: 'warning',
+        message: 'Local development URL'
+      };
+    }
+
+    // All good!
+    return {
+      isValid: true,
+      state: 'valid',
+      message: 'Valid URL'
+    };
+
+  } catch (error) {
+    // Invalid URL format
+    return {
+      isValid: false,
+      state: 'invalid',
+      message: 'Invalid URL format',
+      suggestion: trimmedUrl.includes('.') && !trimmedUrl.includes('://')
+        ? `https://${trimmedUrl}`
+        : undefined
+    };
+  }
+};
+
+/**
  * Sanitizes header value to prevent header injection attacks
  * @param value - The header value to sanitize
  * @returns Sanitized header value

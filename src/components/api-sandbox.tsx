@@ -21,6 +21,7 @@ import { ExportDialog } from './export-dialog';
 import { ImportDialog } from './import-dialog';
 import { STORAGE_KEYS, DEFAULTS } from '@/lib/constants';
 import { generateId } from '@/utils/id-generator';
+import { duplicateRequest, generateCurlCommand, copyToClipboard } from '@/utils/request-utils';
 
 export function ApiSandbox() {
   const [activeRequest, setActiveRequest] = useState<ApiRequest | null>(null);
@@ -139,6 +140,48 @@ export function ApiSandbox() {
     }
     if (data.history) {
       setHistory(data.history);
+    }
+  };
+
+  /**
+   * Duplicates the current active request
+   */
+  const handleDuplicateRequest = () => {
+    if (!activeRequest) return;
+
+    const duplicated = duplicateRequest(activeRequest);
+    setActiveRequest(duplicated);
+    setResponse(null);
+
+    toast({
+      title: "Request duplicated",
+      description: `"${duplicated.name}" created successfully`,
+    });
+  };
+
+  /**
+   * Copies the current request as a cURL command
+   */
+  const handleCopyAsCurl = async () => {
+    if (!activeRequest) return;
+
+    try {
+      const activeEnvironment = environments.find(env => env.id === activeEnvironmentId);
+      const envVars = activeEnvironment?.variables || [];
+      const curlCommand = generateCurlCommand(activeRequest, envVars);
+
+      await copyToClipboard(curlCommand);
+
+      toast({
+        title: "Copied to clipboard",
+        description: "cURL command copied successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy cURL command to clipboard",
+        variant: "destructive",
+      });
     }
   };
 
@@ -387,11 +430,13 @@ export function ApiSandbox() {
             </header>
             
             <main className="flex-1 overflow-auto p-4 flex flex-col gap-4">
-                <RequestPanel 
+                <RequestPanel
                     request={activeRequest}
                     onUpdateRequest={updateRequest}
                     onSend={handleSendRequest}
                     loading={loading}
+                    onDuplicate={handleDuplicateRequest}
+                    onCopyAsCurl={handleCopyAsCurl}
                 />
                 {showCorsWarning && (
                     <Alert variant="destructive" className="relative shrink-0">
