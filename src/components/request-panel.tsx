@@ -12,6 +12,7 @@ import { Textarea } from './ui/textarea';
 import { Card, CardContent } from './ui/card';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { METHOD_COLORS } from '@/lib/constants';
 
 interface RequestPanelProps {
   request: ApiRequest;
@@ -29,17 +30,14 @@ export const RequestPanel = React.memo(function RequestPanel({ request, onUpdate
     onUpdateRequest({ bodyType });
   };
 
-  const getMethodClass = (method: HttpMethod) => {
-    switch (method) {
-      case 'GET': return 'text-green-600 font-bold';
-      case 'POST': return 'text-orange-600 font-bold';
-      case 'PUT': return 'text-blue-600 font-bold';
-      case 'PATCH': return 'text-purple-600 font-bold';
-      case 'DELETE': return 'text-red-600 font-bold';
-      case 'HEAD': return 'text-gray-600 font-bold';
-      case 'OPTIONS': return 'text-pink-600 font-bold';
-      default: return 'text-gray-500 font-bold';
-    }
+  /**
+   * Gets CSS classes for HTTP method styling
+   * @param method - HTTP method
+   * @returns CSS class string with color and font weight
+   */
+  const getMethodClass = (method: HttpMethod): string => {
+    const baseColor = METHOD_COLORS[method] || 'text-gray-500';
+    return `${baseColor} font-bold`;
   };
 
   const isBodyDisabled = request.method === 'GET' || request.method === 'HEAD';

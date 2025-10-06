@@ -13,6 +13,8 @@ import { EnvironmentEditor } from "./environment-editor";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { ConfirmDialog } from "./confirm-dialog";
+import { generateId } from "@/utils/id-generator";
+import { DEFAULTS, METHOD_COLORS } from "@/lib/constants";
 
 interface SidebarContentProps {
   history: RequestHistoryItem[];
@@ -23,9 +25,6 @@ interface SidebarContentProps {
   setEnvironments: (environments: Environment[] | ((prev: Environment[]) => Environment[])) => void;
   activeRequestId: string;
 }
-
-const generateId = (prefix: string = 'id') => `${prefix}_${Math.random().toString(36).substring(2, 11)}`;
-
 export function SidebarContent({ 
   history, 
   collections, 
@@ -55,7 +54,7 @@ export function SidebarContent({
   const handleAddCollection = () => {
     const newCollection: CollectionItem = {
       id: generateId('coll'),
-      name: 'New Collection',
+      name: DEFAULTS.COLLECTION_NAME,
       type: 'folder',
       children: [],
     };
@@ -87,7 +86,7 @@ export function SidebarContent({
   const handleAddRequestToCollection = (collectionId: string) => {
      const newRequest: ApiRequest = {
         id: generateId('req'),
-        name: 'New Request',
+        name: DEFAULTS.REQUEST_NAME,
         method: 'GET',
         url: '',
         queryParams: [],
@@ -122,7 +121,7 @@ export function SidebarContent({
   const handleAddEnvironment = () => {
     const newEnvironment: Environment = {
       id: generateId('env'),
-      name: 'New Environment',
+      name: DEFAULTS.ENVIRONMENT_NAME,
       variables: [{id: generateId('var'), key: '', value: '', enabled: true}],
     };
     setEnvironments(prev => [...prev, newEnvironment]);
@@ -147,15 +146,14 @@ export function SidebarContent({
   }
 
 
-  const getMethodClass = (method?: string) => {
-    switch (method) {
-        case 'GET': return 'text-green-600';
-        case 'POST': return 'text-orange-500';
-        case 'PUT': return 'text-blue-500';
-        case 'PATCH': return 'text-purple-500';
-        case 'DELETE': return 'text-red-500';
-        default: return 'text-gray-400';
-    }
+  /**
+   * Gets Tailwind CSS classes for HTTP method color
+   * @param method - HTTP method name
+   * @returns Tailwind class string for text color
+   */
+  const getMethodClass = (method?: string): string => {
+    if (!method) return 'text-gray-400';
+    return METHOD_COLORS[method as keyof typeof METHOD_COLORS] || 'text-gray-400';
   };
 
 
