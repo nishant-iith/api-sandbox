@@ -19,6 +19,8 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { ThemeToggle } from './theme-toggle';
 import { ExportDialog } from './export-dialog';
 import { ImportDialog } from './import-dialog';
+import { STORAGE_KEYS, DEFAULTS } from '@/lib/constants';
+import { generateId } from '@/utils/id-generator';
 
 export function ApiSandbox() {
   const [activeRequest, setActiveRequest] = useState<ApiRequest | null>(null);
@@ -26,10 +28,10 @@ export function ApiSandbox() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const [history, setHistory] = useLocalStorage<RequestHistoryItem[]>('api-sandbox-history', []);
-  const [collections, setCollections] = useLocalStorage<CollectionItem[]>('api-sandbox-collections', []);
-  const [environments, setEnvironments] = useLocalStorage<Environment[]>('api-sandbox-environments', []);
-  const [activeEnvironmentId, setActiveEnvironmentId] = useLocalStorage<string | null>('api-sandbox-active-env', null);
+  const [history, setHistory] = useLocalStorage<RequestHistoryItem[]>(STORAGE_KEYS.HISTORY, []);
+  const [collections, setCollections] = useLocalStorage<CollectionItem[]>(STORAGE_KEYS.COLLECTIONS, []);
+  const [environments, setEnvironments] = useLocalStorage<Environment[]>(STORAGE_KEYS.ENVIRONMENTS, []);
+  const [activeEnvironmentId, setActiveEnvironmentId] = useLocalStorage<string | null>(STORAGE_KEYS.ACTIVE_ENVIRONMENT, null);
 
   const [showCorsWarning, setShowCorsWarning] = useState(false);
   
@@ -37,19 +39,15 @@ export function ApiSandbox() {
   const isLargeDesktop = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
-    const generateId = (): string => {
-        // This function is safe to use on client-side only hooks/effects
-        return `id_${Math.random().toString(36).substring(2, 11)}`;
-    };
     // Only run on the client
     if (typeof window !== 'undefined' && !activeRequest) {
         const defaultRequest: ApiRequest = {
-          id: generateId(),
-          name: 'Untitled Request',
+          id: generateId('req'),
+          name: DEFAULTS.REQUEST_NAME,
           method: 'GET',
-          url: 'https://jsonplaceholder.typicode.com/todos/1',
-          queryParams: [{ id: generateId(), key: '', value: '', enabled: true }],
-          headers: [{ id: generateId(), key: 'Content-Type', value: 'application/json', enabled: true }],
+          url: DEFAULTS.PLACEHOLDER_URL,
+          queryParams: [{ id: generateId('param'), key: '', value: '', enabled: true }],
+          headers: [{ id: generateId('header'), key: 'Content-Type', value: 'application/json', enabled: true }],
           body: '',
           bodyType: 'none',
         };
@@ -171,9 +169,14 @@ export function ApiSandbox() {
 
   const handleSendRequest = async () => {
     if (!activeRequest) return;
-    
+
+    // Import validation functions
+    const { sanitizeUrl: cleanUrl, validateUrl: checkUrl, sanitizeHeaderValue, sanitizeHeaderKey } = await import('@/services/validation-service');
+
     const processedUrl = substituteVariables(activeRequest.url);
-    if (!validateUrl(processedUrl)) {
+    const cleanedUrl = cleanUrl(processedUrl);
+
+    if (!checkUrl(cleanedUrl)) {
       toast({
         variant: "destructive",
         title: "Invalid URL",
@@ -181,14 +184,14 @@ export function ApiSandbox() {
       });
       return;
     }
-    
+
     setLoading(true);
     setResponse(null);
     setShowCorsWarning(false);
     const startTime = Date.now();
-    
+
     try {
-      const url = new URL(processedUrl);
+      const url = new URL(cleanedUrl);
       activeRequest.queryParams
         .filter(p => p.enabled && p.key)
         .forEach(p => url.searchParams.append(substituteVariables(p.key), substituteVariables(p.value)));
@@ -196,7 +199,11 @@ export function ApiSandbox() {
       const headers = new Headers();
       activeRequest.headers
         .filter(h => h.enabled && h.key)
-        .forEach(h => headers.append(substituteVariables(h.key), substituteVariables(h.value)));
+        .forEach(h => {
+          const key = sanitizeHeaderKey(substituteVariables(h.key));
+          const value = sanitizeHeaderValue(substituteVariables(h.value));
+          if (key) headers.append(key, value);
+        });
 
       let body: BodyInit | undefined = undefined;
       if (activeRequest.method !== 'GET' && activeRequest.method !== 'HEAD') {

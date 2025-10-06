@@ -12,6 +12,7 @@ import { Input } from "./ui/input";
 import { EnvironmentEditor } from "./environment-editor";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
+import { ConfirmDialog } from "./confirm-dialog";
 
 interface SidebarContentProps {
   history: RequestHistoryItem[];
@@ -38,6 +39,19 @@ export function SidebarContent({
   const [collectionName, setCollectionName] = useState("");
   const [editingEnvironment, setEditingEnvironment] = useState<Environment | null>(null);
 
+  // Confirmation dialog states
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
+
   const handleAddCollection = () => {
     const newCollection: CollectionItem = {
       id: generateId('coll'),
@@ -48,8 +62,16 @@ export function SidebarContent({
     setCollections(prev => [...prev, newCollection]);
   };
   
-  const handleRemoveCollection = (id: string) => {
-    setCollections(collections.filter(c => c.id !== id));
+  const handleRemoveCollection = (id: string, name: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Collection',
+      description: `Are you sure you want to delete "${name}"? This action cannot be undone and will delete all requests in this collection.`,
+      onConfirm: () => {
+        setCollections(collections.filter(c => c.id !== id));
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      }
+    });
   };
   
   const handleStartEditing = (collection: CollectionItem) => {
@@ -107,8 +129,16 @@ export function SidebarContent({
     setEditingEnvironment(newEnvironment);
   };
   
-  const handleRemoveEnvironment = (id: string) => {
-    setEnvironments(prev => prev.filter(env => env.id !== id));
+  const handleRemoveEnvironment = (id: string, name: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Environment',
+      description: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      onConfirm: () => {
+        setEnvironments(prev => prev.filter(env => env.id !== id));
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      }
+    });
   };
 
   const handleSaveEnvironment = (updatedEnvironment: Environment) => {
@@ -163,7 +193,7 @@ export function SidebarContent({
                     <DropdownMenuItem onClick={() => handleStartEditing(item)}>
                         <Edit className="w-4 h-4 mr-2" /> Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRemoveCollection(item.id)} className="text-destructive">
+                    <DropdownMenuItem onClick={() => handleRemoveCollection(item.id, item.name)} className="text-destructive">
                         <Trash2 className="w-4 h-4 mr-2" /> Delete Collection
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -242,7 +272,7 @@ export function SidebarContent({
                                   <DropdownMenuItem onClick={() => setEditingEnvironment(env)}>
                                       <Edit className="w-4 h-4 mr-2" /> Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleRemoveEnvironment(env.id)} className="text-destructive">
+                                  <DropdownMenuItem onClick={() => handleRemoveEnvironment(env.id, env.name)} className="text-destructive">
                                       <Trash2 className="w-4 h-4 mr-2" /> Delete
                                   </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -294,6 +324,15 @@ export function SidebarContent({
             onClose={() => setEditingEnvironment(null)}
         />
     )}
+    <ConfirmDialog
+      open={confirmDialog.open}
+      onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+      title={confirmDialog.title}
+      description={confirmDialog.description}
+      onConfirm={confirmDialog.onConfirm}
+      variant="destructive"
+      confirmText="Delete"
+    />
     </>
   )
 }
